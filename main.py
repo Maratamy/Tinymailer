@@ -11,10 +11,9 @@ import locale
 import ssl
 import logging
 
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib, Gdk
-
-
 
 
 def label_cutter(label):
@@ -23,6 +22,7 @@ def label_cutter(label):
     else:
         return label
 
+
 def format_date(date_str):
     locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
     date_str = date_str.strip('"').split(' +')[0]
@@ -30,7 +30,8 @@ def format_date(date_str):
     formatted_date = date_obj.strftime('%d %B %Y %H:%M')
     return formatted_date
 
-class Data_processor:
+
+class DataProcessor:
     @staticmethod
     def get_dir():
         if os.name == 'nt':  # Windows
@@ -38,9 +39,10 @@ class Data_processor:
         elif os.name == 'posix':  # Linux or MacOS
             dir_path = os.path.join(os.environ['HOME'], 'Documents')
         return dir_path
+
     @staticmethod
     def data_saver(check, name, imap):
-        dir_path = Data_processor.get_dir()
+        dir_path = DataProcessor.get_dir()
         file_name = 'mymailprof.dat'
         file_path = os.path.join(dir_path, file_name)
         info = [check, name, imap]
@@ -54,7 +56,7 @@ class Data_processor:
     @staticmethod
     def settings_saver(freq, show, on_screen):
         file_name = 'mymailset.dat'
-        dir_path = Data_processor.get_dir()
+        dir_path = DataProcessor.get_dir()
         file_path = os.path.join(dir_path, file_name)
         info = [freq, show, on_screen]
         try:
@@ -66,7 +68,7 @@ class Data_processor:
 
     @staticmethod
     def data_reader(name):
-        dir_path = Data_processor.get_dir()
+        dir_path = DataProcessor.get_dir()
         file_path = os.path.join(dir_path, name)
         try:
             with open(file_path, "rb") as f:
@@ -76,18 +78,20 @@ class Data_processor:
         except:
             print("Ошибка чтения данных")
 
+
 class Error(Gtk.Window):
-    def __init__(self, error):
-        Gtk.Window.__init__(self, title= "Ошибка")
+    def __init__(self, error, title="Ошибка"):
+        Gtk.Window.__init__(self, title=title)
         self.set_default_size(120, 50)
         self.set_resizable(False)
         self.set_border_width(10)
-        self.label = Gtk.Label(label=err_text)
+        self.label = Gtk.Label(label=str(error))
         self.label.set_justify(Gtk.Justification.FILL)
-        self.get_content_area().add(self.label)
+        self.add(self.label)
         self.show_all()
 
-class Error_dialog(Gtk.Dialog):
+
+class ErrorDialog(Gtk.Dialog):
     def __init__(self, parent, err_text):
         Gtk.Dialog.__init__(self, title="Ошибка", transient_for=parent, flags=0)
         self.set_default_size(120, 50)
@@ -99,13 +103,14 @@ class Error_dialog(Gtk.Dialog):
         self.show_all()
         self.run()
 
+
 class Settings(Gtk.Window):
     def __init__(self, widget, cur_freq, show_me, on_top):
-        Gtk.Window.__init__(self, title= "Настройки")
+        Gtk.Window.__init__(self, title="Настройки")
 
         self.set_border_width(10)
         self.set_resizable(False)
-        self.hbox = Gtk.Box(spacing = 10)
+        self.hbox = Gtk.Box(spacing=10)
         self.lbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.rbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.rbox.set_homogeneous(True)
@@ -113,9 +118,9 @@ class Settings(Gtk.Window):
         self.hbox.pack_start(self.lbox, True, True, 0)
         self.hbox.pack_start(self.rbox, True, True, 0)
 
-        label = Gtk.Label(label = "Частота обновления, с")
-        self.lbox.pack_start(label,True,True, 0)
-        label = Gtk.Label(label = "Показать непрочитанные")
+        label = Gtk.Label(label="Частота обновления, с")
+        self.lbox.pack_start(label, True, True, 0)
+        label = Gtk.Label(label="Показать непрочитанные")
         self.lbox.pack_start(label, True, True, 0)
         self.adj = Gtk.Adjustment(value=cur_freq, lower=1, upper=400,
                                   step_increment=1, page_increment=10, page_size=0)
@@ -133,9 +138,9 @@ class Settings(Gtk.Window):
         if on_top:
             self.always_on_top.set_active(True)
         self.rbox.pack_start(self.always_on_top, True, True, 0)
-        self.button = Gtk.Button(label = "Применить")
+        self.button = Gtk.Button(label="Применить")
         self.rbox.pack_start(self.button, True, True, 0)
-        label = Gtk.Label(label = " ")
+        label = Gtk.Label(label=" ")
         self.lbox.pack_start(label, True, True, 0)
         self.add(self.hbox)
         self.show_all()
@@ -143,12 +148,13 @@ class Settings(Gtk.Window):
 
     def on_button_clicked(self, widget):
         try:
-            Data_processor.settings_saver(self.frequency_slider.get_value(),
+            DataProcessor.settings_saver(self.frequency_slider.get_value(),
                                       self.amount_checkbox.get_active(), self.always_on_top.get_active())
         except Exception as e:
-            Error_dialog(self, "Ошибка: " + str(e))
+            ErrorDialog(self, "Ошибка: " + str(e))
 
-class Notify_me(Gtk.Window):
+
+class Notify(Gtk.Window):
     def __init__(self, amount):
         Gtk.Window.__init__(self, title="Оповещение")
         self.set_default_size(300, 100)
@@ -160,10 +166,78 @@ class Notify_me(Gtk.Window):
         self.add(self.hbox)
         self.show_all()
 
-class Notification_window(Gtk.Window):
+
+class MailProcessor():
+
+    def __init__(self):
+        self.on_screen = ''
+        self.username = ''
+        self.user_password = ''
+        self.imap_server = ''
+
+    def login_mail(self, username, passwrd, server, freq, on_screen):
+        self.on_screen = on_screen
+        self.username = username
+        self.user_password = passwrd
+        self.imap_server = server
+        encoding = "utf-8"
+        self.imap = imaplib.IMAP4_SSL(self.imap_server)
+        self.imap.login(self.username, self.user_password)
+        self.imap.select("INBOX")
+        self.unseen_msg_old = self.imap.uid('search', "unseen", "all")[1]
+        self.unseen_msg_old = set(self.unseen_msg_old[0].decode(encoding).split(" "))
+        GLib.timeout_add(freq, self.read_mail)
+
+    def get_amount_unseen_msg(self):
+        return str(len(self.unseen_msg_old))
+
+    def reconnect_imap(self):
+        try:
+            self.imap = imaplib.IMAP4_SSL(self.imap_server)
+            self.imap.login(self.username, self.user_password)
+            self.imap.select("INBOX")
+            self.unseen_msg_old = self.imap.uid('search', "unseen", "all")[1]
+            self.unseen_msg_old = set(self.unseen_msg_old[0].decode("utf-8").split(" "))
+            return True
+        except Exception as e:
+            logging.error("Error occurred during reconnection: %s", e)
+            time.sleep(3)
+            return self.reconnect_imap()
+
+
+    def read_mail(self):
+        try:
+            encoding = "utf-8"
+            unseen_msg = self.imap.uid('search', "unseen", "all")[1]
+            logging.info("Success")
+            unseen_msg = set(unseen_msg[0].decode(encoding).split(" "))
+            if unseen_msg - set(self.unseen_msg_old):
+                letters = list(unseen_msg - set(self.unseen_msg_old))
+                self.unseen_msg_old = unseen_msg
+                for letter in letters:
+                    res, msg = self.imap.uid('fetch', letter, '(RFC822)')
+                    if res == "OK":
+                        msg = email.message_from_bytes(msg[0][1])
+                        msg_date = imaplib.Time2Internaldate(email.utils.parsedate_tz(msg["Date"]))
+                        msg_from = msg["Return-path"]
+                        msg_subj = decode_header(msg["Subject"])[0][0]
+                        if isinstance(msg_subj, bytes):
+                            msg_subj = msg_subj.decode()
+                        formatted_date = format_date(msg_date)
+                        NotificationWindow(formatted_date, msg_from, msg_subj, self.on_screen)
+                        self.imap.uid('STORE', letter, '-FLAGS', '\\Seen')
+                        self.imap.expunge()
+            return True
+        except Exception as e:
+            logging.error("Error occurred: %s", e)
+            print(self, "Ошибка: " + str(e))
+            self.reconnect_imap()
+            return True
+
+class NotificationWindow(Gtk.Window):
     def __init__(self, Date, Path, Subj, Keep_Above):
         Path = str(Path).strip("<>").replace("<", "")
-        Gtk.Window.__init__(self, title="Новое сообщение")
+        Gtk.Window.__init__(self, title="Новое сообщение.")
 
         self.date = Gtk.Label(label=str(Date), expand=True, justify = Gtk.Justification.CENTER)
         self.path = Gtk.Label(label=label_cutter(str(Path)), expand=True, justify = Gtk.Justification.CENTER)
@@ -184,12 +258,12 @@ class Notification_window(Gtk.Window):
         self.y = self.screen_height - self.dialog_height
         if Keep_Above:
             self.set_keep_above(True)
-        label = Gtk.Label(label = "Дата:")
+        label = Gtk.Label(label="Дата:")
         label.set_justify(Gtk.Justification.FILL)
         label.set_padding(0,0)
         self.grid.add(self.date)
         self.grid.attach_next_to(label, self.date, Gtk.PositionType.LEFT, 1, 1)
-        label1 = Gtk.Label(label = "Отправитель:")
+        label1 = Gtk.Label(label="Отправитель:")
         self.grid.attach_next_to(label1, label, Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.path, self.date, Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.subj, label1, Gtk.PositionType.BOTTOM, 2, 3)
@@ -199,17 +273,13 @@ class Notification_window(Gtk.Window):
         self.show_all()
 
 
-class Main_window(Gtk.Window):
+class MainWindow(Gtk.Window):
 
     def __init__(self):
         super().__init__(title="Tinymail")
         self.set_size_request(400, 300)
         self.set_resizable(False)
         self.set_border_width(10)
-
-        self.username = ""
-        self.user_password = ""
-        self.imap_server = ""
 
         self.status_icon = Gtk.StatusIcon()
         self.status_icon.set_from_icon_name("mail-inbox")
@@ -275,16 +345,16 @@ class Main_window(Gtk.Window):
         checkbox = Gtk.CheckButton(label="Запомнить меня")
         checkbox.connect("toggled", self.on_checkbox_toggled)
         vbox_right.pack_start(checkbox, True, True, 0)
-        dir_path = Data_processor.get_dir()
+        dir_path = DataProcessor.get_dir()
         if os.path.isfile(os.path.join(dir_path, "mymailprof.dat")):
-            self.data = Data_processor.data_reader("mymailprof.dat")
+            self.data = DataProcessor.data_reader("mymailprof.dat")
             if self.data[0]:
                 self.check = True
                 self.user_name_entry.set_text(self.data[1])
                 self.user_imap_entry.set_text(self.data[2])
                 checkbox.set_active(True)
         if os.path.isfile(os.path.join(dir_path, "mymailset.dat")):
-            self.data = Data_processor.data_reader("mymailset.dat")
+            self.data = DataProcessor.data_reader("mymailset.dat")
             if self.data[0]:
                 self.freq = self.data[0] * 1000
                 self.show_me = self.data[1]
@@ -309,63 +379,7 @@ class Main_window(Gtk.Window):
         Settings(widget=widget, cur_freq=self.freq/1000, show=self.show_me, on_top=self.on_screen)
 
     def on_checkbox_toggled(self, widget):
-        if widget.get_active():
-            self.check = True
-        else:
-            self.check = False
-
-    def login_mail(self, username_, passwrd, server):
-        self.username = username_
-        self.user_password = passwrd
-        self.imap_server = server
-        encoding = "utf-8"
-
-        self.imap = imaplib.IMAP4_SSL(self.imap_server)
-        self.imap.login(self.username, self.user_password)
-        self.imap.select("INBOX")
-        self.unseen_msg_old = self.imap.uid('search', "unseen", "all")[1]
-        self.unseen_msg_old = set(self.unseen_msg_old[0].decode(encoding).split(" "))
-        if self.show_me:
-            Notify_me(str(len(self.unseen_msg_old)))
-        GLib.timeout_add(self.freq, self.read_mail)
-
-    def reconnect_imap(self):
-        try:
-            self.imap = imaplib.IMAP4_SSL(self.imap_server)
-            self.imap.login(self.username, self.user_password)
-            self.imap.select("INBOX")
-            self.unseen_msg_old = self.imap.uid('search', "unseen", "all")[1]
-            self.unseen_msg_old = set(self.unseen_msg_old[0].decode("utf-8").split(" "))
-        except (imaplib.IMAP4.error, ssl.SSLEOFError, imaplib.IMAP4.abort) as e:
-            logging.error("Error occurred during reconnection: %s", e)
-
-    def read_mail(self):
-        try:
-            encoding = "utf-8"
-            unseen_msg = self.imap.uid('search', "unseen", "all")[1]
-            logging.info("Success")
-            unseen_msg = set(unseen_msg[0].decode(encoding).split(" "))
-            if unseen_msg - set(self.unseen_msg_old):
-                letters = list(unseen_msg - set(self.unseen_msg_old))
-                self.unseen_msg_old = unseen_msg
-                for letter in letters:
-                    res, msg = self.imap.uid('fetch', letter, '(RFC822)')
-                    if res == "OK":
-                        msg = email.message_from_bytes(msg[0][1])
-                        msg_date = imaplib.Time2Internaldate(email.utils.parsedate_tz(msg["Date"]))
-                        msg_from = msg["Return-path"]
-                        msg_subj = decode_header(msg["Subject"])[0][0]
-                        if isinstance(msg_subj, bytes):
-                            msg_subj = msg_subj.decode()
-                        formatted_date = format_date(msg_date)
-                        Notification_window(formatted_date, msg_from, msg_subj, self.on_screen)
-                        self.imap.uid('STORE', letter, '-FLAGS', '\\Seen')
-                        self.imap.expunge()
-            return True
-        except (imaplib.IMAP4.error, ssl.SSLEOFError, imaplib.IMAP4.abort) as e:
-            logging.error("Error occurred: %s", e)
-            self.reconnect_imap()
-            return True
+        self.check = widget.get_active()
 
     def on_status_icon_button_press(self, icon, event):
         if event.button == 3:
@@ -383,22 +397,26 @@ class Main_window(Gtk.Window):
 
     def on_button_clicked(self, widget):
         try:
+            mailer = MailProcessor()
             if self.check:
-                Data_processor.data_saver(self.check,
+                DataProcessor.data_saver(self.check,
                                           str(self.user_name_entry.get_text()),
                                           str(self.user_imap_entry.get_text()))
             elif not self.check and os.path.isfile("profile.dat"):
                 os.remove("profile.dat")
-            self.login_mail(str(self.user_name_entry.get_text()), str(self.user_pass_entry.get_text()),
-                            str(self.user_imap_entry.get_text()))
+            mailer.login_mail(str(self.user_name_entry.get_text()), str(self.user_pass_entry.get_text()),
+                              str(self.user_imap_entry.get_text()), self.freq, self.on_screen)
+            if self.show_me:
+                Notify(mailer.get_amount_unseen_msg)
             self.hide()
-        except imaplib.IMAP4.error:
-            Error_dialog(self, "Ошибка авторизации. Проверьте введённые данные")
+        except imaplib.IMAP4.error as e:
+            ErrorDialog(self, "Ошибка авторизации. Проверьте введённые данные")
         except Exception as e:
-            Error_dialog(self, "Ошибка: " + str(e))
+            ErrorDialog(self, "Ошибка: " + str(e))
+
 
 def main():
-    win = Main_window()
+    win = MainWindow()
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()
@@ -408,5 +426,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exp:
-        text = str("Ошибка: " + str(exp))
+        text = str("Ошибка main: " + str(exp))
         print(text)
